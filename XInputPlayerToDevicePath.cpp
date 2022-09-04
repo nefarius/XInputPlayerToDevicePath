@@ -1,0 +1,62 @@
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <winioctl.h>
+#include <Xinput.h>
+#include <iostream>
+#include <detours/detours.h>
+
+#pragma comment(lib, "setupapi.lib")
+
+
+
+static decltype(CreateFileW)* real_CreateFileW = CreateFileW;
+
+typedef DWORD(WINAPI* XInputGetCapabilities_t)(DWORD, DWORD, XINPUT_CAPABILITIES*);
+static XInputGetCapabilities_t pGetCapabilities = NULL;
+
+
+HANDLE WINAPI DetourCreateFileW(
+	LPCWSTR lpFileName,
+	DWORD dwDesiredAccess,
+	DWORD dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD dwCreationDisposition,
+	DWORD dwFlagsAndAttributes,
+	HANDLE hTemplateFile
+)
+{
+	std::wcout << L"Device path: " << lpFileName << std::endl;
+
+	const auto handle = real_CreateFileW(
+		lpFileName,
+		dwDesiredAccess,
+		dwShareMode,
+		lpSecurityAttributes,
+		dwCreationDisposition,
+		dwFlagsAndAttributes,
+		hTemplateFile
+	);
+
+	return handle;
+}
+
+
+int main()
+{
+	DetourTransactionBegin();
+	DetourUpdateThread(GetCurrentThread());
+	DetourAttach((void**)&real_CreateFileW, DetourCreateFileW);
+	DetourTransactionCommit();
+
+	pGetCapabilities = (XInputGetCapabilities_t)GetProcAddress(LoadLibrary(L"xinput1_4"), "XInputGetCapabilities");
+
+	XINPUT_CAPABILITIES caps = { 0 };
+	const auto ret = pGetCapabilities(0, XINPUT_FLAG_GAMEPAD, &caps);
+
+	DetourTransactionBegin();
+	DetourUpdateThread(GetCurrentThread());
+	DetourDetach((void**)&real_CreateFileW, DetourCreateFileW);
+	DetourTransactionCommit();
+
+	getchar();
+}
