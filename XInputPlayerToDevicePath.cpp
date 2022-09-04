@@ -5,9 +5,6 @@
 #include <iostream>
 #include <detours/detours.h>
 
-#pragma comment(lib, "setupapi.lib")
-
-
 
 static decltype(CreateFileW)* real_CreateFileW = CreateFileW;
 
@@ -15,6 +12,9 @@ typedef DWORD(WINAPI* XInputGetCapabilities_t)(DWORD, DWORD, XINPUT_CAPABILITIES
 static XInputGetCapabilities_t pGetCapabilities = NULL;
 
 
+//
+// Detoured CreateFileW
+// 
 HANDLE WINAPI DetourCreateFileW(
 	LPCWSTR lpFileName,
 	DWORD dwDesiredAccess,
@@ -43,16 +43,25 @@ HANDLE WINAPI DetourCreateFileW(
 
 int main()
 {
+	// 
+	// establish hooks
+	// 
 	DetourTransactionBegin();
 	DetourUpdateThread(GetCurrentThread());
 	DetourAttach((void**)&real_CreateFileW, DetourCreateFileW);
 	DetourTransactionCommit();
 
+	//
+	// Get XInputGetCapabilities function
+	// 
 	pGetCapabilities = (XInputGetCapabilities_t)GetProcAddress(LoadLibrary(L"xinput1_4"), "XInputGetCapabilities");
 
 	XINPUT_CAPABILITIES caps = { 0 };
 	const auto ret = pGetCapabilities(0, XINPUT_FLAG_GAMEPAD, &caps);
 
+	//
+	// Remove hooks
+	// 
 	DetourTransactionBegin();
 	DetourUpdateThread(GetCurrentThread());
 	DetourDetach((void**)&real_CreateFileW, DetourCreateFileW);
