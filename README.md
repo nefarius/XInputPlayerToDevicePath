@@ -5,7 +5,7 @@ Crude example project demoing how one can use API hooking `CreateFile` to revers
 Since the XInput API is deliberately kept simple and opaque, we need to get creative if we need the Player index to device association. The idea is as follows:
 
 - We hook `CreateFile` since any XInput DLL internally enumerates and opens the desired instance of the device running under `XUSB22.sys`
-  - This grants us easy access to the device üath/symbolic link we will need later on
+  - This grants us easy access to the device path/symbolic link we will need later on
 - Call `XInputGetCapabilities` with the desired user index to look up
   - This triggers our hook and calls the detoured function instead, supplying the symbolic link as the `lpFileName` parameter.
   - Within the detoured function, we can use `CM_Get_Device_Interface_Property` from `CfgMgr32.h` to query for `DEVPKEY_Device_InstanceId`.
