@@ -34,7 +34,7 @@ static XInputGetCapabilities_t pGetCapabilities = NULL;
 static DWORD G_CurrentUserIndex = 0;
 static std::map<DWORD, std::wstring> G_MapUserIndexDeviceInstanceId
 {
-	{0, L"<not connected>"},
+	{ 0, L"<not connected>"},
 	{ 1, L"<not connected>" },
 	{ 2, L"<not connected>" },
 	{ 3, L"<not connected>" },
