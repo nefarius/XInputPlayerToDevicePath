@@ -13,4 +13,4 @@ Since the XInput API is deliberately kept simple and opaque, we need to get crea
 
 ## Screenshots
 
-![VsDebugConsole_qu0ebOxHr9.png](assets/VsDebugConsole_qu0ebOxHr9.png)
+![VsDebugConsole_9qgM0dxIzH.png](assets/VsDebugConsole_9qgM0dxIzH.png)

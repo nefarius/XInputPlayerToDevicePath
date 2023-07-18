@@ -20,12 +20,25 @@
 // STL
 // 
 #include <iostream>
+#include <map>
 
 
 static decltype(CreateFileW)* real_CreateFileW = CreateFileW;
 
 typedef DWORD(WINAPI* XInputGetCapabilities_t)(DWORD, DWORD, XINPUT_CAPABILITIES*);
 static XInputGetCapabilities_t pGetCapabilities = NULL;
+
+//
+// Crude global state keeping helpers
+// 
+static DWORD G_CurrentUserIndex = 0;
+static std::map<DWORD, std::wstring> G_MapUserIndexDeviceInstanceId
+{
+	{0, L"<not connected>"},
+	{ 1, L"<not connected>" },
+	{ 2, L"<not connected>" },
+	{ 3, L"<not connected>" },
+};
 
 
 //
@@ -41,7 +54,9 @@ HANDLE WINAPI DetourCreateFileW(
 	HANDLE hTemplateFile
 )
 {
-	std::wcout << L"Device path: " << lpFileName << std::endl;
+	//std::wcout << "Looking up User Index " << std::dec << G_CurrentUserIndex << std::endl;
+
+	//std::wcout << L"Device path: " << lpFileName << std::endl;
 
 	DEVPROPTYPE type = 0;
 	ULONG sizeRequired = 0;
@@ -66,7 +81,9 @@ HANDLE WINAPI DetourCreateFileW(
 		0
 	);
 
-	std::wcout << L"Device Instance ID: " << buffer << std::endl;
+	//std::wcout << L"Device Instance ID: " << buffer << std::endl;
+
+	G_MapUserIndexDeviceInstanceId[G_CurrentUserIndex] = std::wstring(buffer);
 
 	const auto handle = real_CreateFileW(
 		lpFileName,
@@ -78,11 +95,12 @@ HANDLE WINAPI DetourCreateFileW(
 		hTemplateFile
 	);
 
+	G_CurrentUserIndex++;
+
 	return handle;
 }
 
-
-int main()
+static void RunLookupForUserIndex()
 {
 	// 
 	// establish hooks
@@ -97,14 +115,38 @@ int main()
 	// 
 	pGetCapabilities = (XInputGetCapabilities_t)GetProcAddress(LoadLibrary(L"xinput1_4"), "XInputGetCapabilities");
 
-	XINPUT_CAPABILITIES caps = { 0 };
+	XINPUT_CAPABILITIES caps = { };
 
-	std::wcout << "Calling XInputGetCapabilities for User Index 0" << std::endl;
+	//
+	// Poor man's state reset
+	// 
+	G_MapUserIndexDeviceInstanceId[0] = L"<not connected>";
+	G_MapUserIndexDeviceInstanceId[1] = L"<not connected>";
+	G_MapUserIndexDeviceInstanceId[2] = L"<not connected>";
+	G_MapUserIndexDeviceInstanceId[3] = L"<not connected>";
+
+	//
+	// We need to reset this, see comment below why
+	// 
+	G_CurrentUserIndex = 0;
 
 	//
 	// This call will implicitly provoke the CreateFile call we hooked earlier within the logic of XInputX_X.dll
 	// 
-	const auto ret = pGetCapabilities(0, XINPUT_FLAG_GAMEPAD, &caps);
+	const auto ret = pGetCapabilities(
+		/* no matter how many devices are connected, always pass in 0
+		 * because if >1 devices are present, the first call to
+		 * XInputGetCapabilities will always enumerate all detected
+		 * controllers on the first call, no matter what user index
+		 * you supply, so we need to keep track of the association
+		 * ourselves when the detoured function gets called.
+		 */
+		0,
+		/* this is the only supported flag and always remains the same */
+		XINPUT_FLAG_GAMEPAD,
+		/* we do not really need the result but oh well */
+		&caps
+	);
 
 	//
 	// Remove hooks
@@ -113,6 +155,16 @@ int main()
 	DetourUpdateThread(GetCurrentThread());
 	DetourDetach((void**)&real_CreateFileW, DetourCreateFileW);
 	DetourTransactionCommit();
+}
+
+int main()
+{
+	RunLookupForUserIndex();
+
+	for (const auto& kv : G_MapUserIndexDeviceInstanceId)
+	{
+		std::wcout << L"Player Index: " << kv.first << " has Instance ID " << kv.second << std::endl;
+	}
 
 	getchar();
 }
