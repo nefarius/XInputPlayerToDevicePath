@@ -5,6 +5,11 @@
 #include <Windows.h>
 #include <winioctl.h>
 #include <Xinput.h>
+#include <cfgmgr32.h>
+#include <initguid.h>
+#include <devpkey.h>
+
+#pragma comment(lib, "cfgmgr32")
 
 //
 // Detours
@@ -38,6 +43,31 @@ HANDLE WINAPI DetourCreateFileW(
 {
 	std::wcout << L"Device path: " << lpFileName << std::endl;
 
+	DEVPROPTYPE type = 0;
+	ULONG sizeRequired = 0;
+
+	CM_Get_Device_Interface_Property(
+		lpFileName,
+		&DEVPKEY_Device_InstanceId,
+		&type,
+		NULL,
+		&sizeRequired,
+		0
+	);
+
+	const PWSTR buffer = (PWSTR)malloc(sizeRequired);
+
+	CM_Get_Device_Interface_Property(
+		lpFileName,
+		&DEVPKEY_Device_InstanceId,
+		&type,
+		(PUCHAR)buffer,
+		&sizeRequired,
+		0
+	);
+
+	std::wcout << L"Device Instance ID: " << buffer << std::endl;
+
 	const auto handle = real_CreateFileW(
 		lpFileName,
 		dwDesiredAccess,
@@ -68,6 +98,8 @@ int main()
 	pGetCapabilities = (XInputGetCapabilities_t)GetProcAddress(LoadLibrary(L"xinput1_4"), "XInputGetCapabilities");
 
 	XINPUT_CAPABILITIES caps = { 0 };
+
+	std::wcout << "Calling XInputGetCapabilities for User Index 0" << std::endl;
 
 	//
 	// This call will implicitly provoke the CreateFile call we hooked earlier within the logic of XInputX_X.dll
