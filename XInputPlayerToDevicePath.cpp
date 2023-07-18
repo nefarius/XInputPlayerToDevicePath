@@ -57,6 +57,10 @@ int main()
 	pGetCapabilities = (XInputGetCapabilities_t)GetProcAddress(LoadLibrary(L"xinput1_4"), "XInputGetCapabilities");
 
 	XINPUT_CAPABILITIES caps = { 0 };
+
+	//
+	// This call will implicitly provoke the CreateFile call we hooked earlier within the logic of XInputX_X.dll
+	// 
 	const auto ret = pGetCapabilities(0, XINPUT_FLAG_GAMEPAD, &caps);
 
 	//
