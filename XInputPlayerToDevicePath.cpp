@@ -1,9 +1,20 @@
+//
+// WinAPI
+// 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <winioctl.h>
 #include <Xinput.h>
-#include <iostream>
+
+//
+// Detours
+// 
 #include <detours/detours.h>
+
+//
+// STL
+// 
+#include <iostream>
 
 
 static decltype(CreateFileW)* real_CreateFileW = CreateFileW;
