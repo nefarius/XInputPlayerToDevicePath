@@ -10,3 +10,7 @@ Since the XInput API is deliberately kept simple and opaque, we need to get crea
   - This triggers our hook and calls the detoured function instead, supplying the symbolic link as the `lpFileName` parameter.
   - Within the detoured function, we can use `CM_Get_Device_Interface_Property` from `CfgMgr32.h` to query for `DEVPKEY_Device_InstanceId`.
   - Now we got the local machine unique device instance ID of the XUSB/XInput controller device 😃
+
+## Screenshots
+
+![VsDebugConsole_qu0ebOxHr9.png](assets/VsDebugConsole_qu0ebOxHr9.png)
